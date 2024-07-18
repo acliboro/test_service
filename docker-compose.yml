@@ -1,0 +1,58 @@
+version: "3.8"
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:13.7
+    restart: always
+    env_file: .env
+    environment:
+        POSTGRES_USER: ${POSTGRES_USER}
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+        - ${POSTGRES_PORT}:${POSTGRES_PORT}
+  backend_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: backend_app
+    stop_signal: SIGINT
+    restart: always
+    env_file: .env
+    depends_on: 
+      - postgres
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    volumes:
+      - ./:/backend_app
+  redis:
+    image: redis:6.2.7
+    container_name: redis
+    restart: on-failure
+    ports: 
+      - "6379:6379"
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    user: "472"
+    container_name: grafana
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    volumes:
+      - ./datasource.yml:/etc/grafana/provisioning/datasource.yml
+    env_file:
+      - ./config.monitoring
+  
+  
